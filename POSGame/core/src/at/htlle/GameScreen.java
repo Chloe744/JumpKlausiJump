@@ -35,13 +35,17 @@ public class GameScreen implements Screen {
     Sound dropSound;
     Music rainMusic;
     OrthographicCamera camera;
-    Rectangle bucket;
+    Rectangle klausiRec;
     Array<Rectangle> raindrops;
     long lastDropTime;
     int dropsGathered;
     boolean paused = false;
     float x = Gdx.graphics.getWidth();
     float y = Gdx.graphics.getHeight();
+    float jumpHeight = 75;
+    float jumpSpeed = 1;
+    float jumpTime = 1;
+    float jumpOffset;
 
     public GameScreen(final Start game) {
         this.game = game;
@@ -59,13 +63,12 @@ public class GameScreen implements Screen {
         camera = new OrthographicCamera();
         camera.setToOrtho(false, x, y);
 
-        // create a Rectangle to logically represent the bucket
-        bucket = new Rectangle();
-        bucket.x = x / 2 - 64 / 2; // center the bucket horizontally
-        bucket.y = 20; // bottom left corner of the bucket is 20 pixels above
-        // the bottom screen edge
-        bucket.width = 64;
-        bucket.height = 64;
+        // create a Rectangle to logically represent klausi
+        klausiRec = new Rectangle();
+        klausiRec.x = x / 2 - 64 / 2; // center klausi horizontally
+        klausiRec.y = 20; // bottom left corner of the bucket is 20 pixels above the bottom screen edge
+        klausiRec.width = 64;
+        klausiRec.height = 64;
 
         // create the raindrops array and spawn the first raindrop
         raindrops = new Array<Rectangle>();
@@ -117,7 +120,7 @@ public class GameScreen implements Screen {
             // all drops
             game.batch.begin();
             game.font.draw(game.batch, "Drops Collected: " + dropsGathered, 0, y-64);
-            game.batch.draw(klausi, bucket.x, bucket.y);
+            game.batch.draw(klausi, klausiRec.x, klausiRec.y);
             for (Rectangle raindrop : raindrops) {
                 game.batch.draw(dropImage, raindrop.x, raindrop.y);
             }
@@ -128,18 +131,26 @@ public class GameScreen implements Screen {
                 Vector3 touchPos = new Vector3();
                 touchPos.set(Gdx.input.getX(), Gdx.input.getY(), 0);
                 camera.unproject(touchPos);
-                bucket.x = touchPos.x - 64 / 2;
+                klausiRec.x = touchPos.x - 64 / 2;
             }
             if (Gdx.input.isKeyPressed(Keys.LEFT))
-                bucket.x -= 200 * Gdx.graphics.getDeltaTime();
+                klausiRec.x -= 400 * Gdx.graphics.getDeltaTime();
             if (Gdx.input.isKeyPressed(Keys.RIGHT))
-                bucket.x += 200 * Gdx.graphics.getDeltaTime();
+                klausiRec.x += 400 * Gdx.graphics.getDeltaTime();
 
-            // make sure the bucket stays within the screen bounds
-            if (bucket.x < 0)
-                bucket.x = 0;
-            if (bucket.x > x - 64)
-                bucket.x = x - 64;
+            //make Klausi jump with a sin curve
+            jumpTime += Gdx.graphics.getDeltaTime();
+            double w = 2 * Math.PI * jumpSpeed;
+            jumpOffset = (float) ((float) jumpHeight + Math.sin(jumpTime * w) * jumpHeight);
+
+            // Update klausi position
+            klausiRec.y = 20 + jumpOffset;
+
+            // make sure klausi stays within the screen bounds
+            if (klausiRec.x < 0)
+                klausiRec.x = 0;
+            if (klausiRec.x > x - 64)
+                klausiRec.x = x - 64;
 
             // check if we need to create a new raindrop
             if (TimeUtils.nanoTime() - lastDropTime > 1000000000)
@@ -154,7 +165,7 @@ public class GameScreen implements Screen {
                 raindrop.y -= 200 * Gdx.graphics.getDeltaTime();
                 if (raindrop.y + 64 < 0)
                     iter.remove();
-                if (raindrop.overlaps(bucket)) {
+                if (raindrop.overlaps(klausiRec)) {
                     dropsGathered++;
                     dropSound.play();
                     iter.remove();
@@ -193,5 +204,4 @@ public class GameScreen implements Screen {
         dropSound.dispose();
         rainMusic.dispose();
     }
-
 }
